@@ -190,7 +190,7 @@ fun Calendrier(
     val espace = 7.dp
     Column(verticalArrangement = Arrangement.spacedBy(espace)) {
         LettresJours(espacement = espace)
-        Periodes.semainesDuMois(mois).forEach { lundi ->
+        Periodes.lignesCalendrier(mois).forEach { lundi ->
             Row(horizontalArrangement = Arrangement.spacedBy(espace)) {
                 Periodes.joursSemaine(lundi).forEach { jour ->
                     if (YearMonth.from(jour) != mois) {

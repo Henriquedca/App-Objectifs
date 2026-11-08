@@ -1,9 +1,9 @@
 package com.henrique.objectifs.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -42,112 +43,126 @@ import com.henrique.objectifs.data.Periodes
 import java.time.LocalDate
 import java.time.YearMonth
 
+/** Historique par mois : objectifs du mois (calendrier) + objectifs hebdo de chaque semaine du mois. */
 @Composable
 fun EcranHistorique(
     donnees: Donnees,
     aujourdhui: LocalDate,
     onCycler: (Objectif, LocalDate) -> Unit,
+    onMenu: (Objectif) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val p = LocalPalette.current
-    var idChoisi by rememberSaveable { mutableStateOf<String?>(null) }
     var moisTexte by rememberSaveable { mutableStateOf(YearMonth.from(aujourdhui).toString()) }
     val mois = YearMonth.parse(moisTexte)
-    val objectif = donnees.objectifs.firstOrNull { it.id == idChoisi } ?: donnees.objectifs.firstOrNull()
+    val mensuels = donnees.mensuelsDe(mois)
+    val semaines = Periodes.semainesDuMois(mois).reversed()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item { EnTete(sousTitre = objectif?.nom ?: "", titre = "Historique") }
-
-        if (objectif == null) {
-            item { Text("Aucun objectif pour l'instant.", color = p.texteDoux, fontSize = 15.sp) }
-            return@LazyColumn
-        }
-
-        if (donnees.objectifs.size > 1) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    donnees.objectifs.forEach { o ->
-                        val actif = o.id == objectif.id
-                        Text(
-                            o.nom,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(if (actif) p.vert else p.carte)
-                                .clickable { idChoisi = o.id }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            color = if (actif) p.surVert else p.texte,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                        )
-                    }
+        item {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Box(Modifier.weight(1f)) {
+                    EnTete(sousTitre = Periodes.nomMois(mois), titre = "Historique")
+                }
+                BoutonFleche(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Mois précédent") {
+                    moisTexte = mois.minusMonths(1).toString()
+                }
+                Spacer(Modifier.width(10.dp))
+                BoutonFleche(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Mois suivant") {
+                    moisTexte = mois.plusMonths(1).toString()
                 }
             }
         }
 
-        item {
-            Carte {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        Periodes.nomMois(mois),
-                        color = p.texte,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).clickable { moisTexte = YearMonth.from(aujourdhui).toString() },
-                    )
-                    BoutonFleche(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Mois précédent") {
-                        moisTexte = mois.minusMonths(1).toString()
-                    }
-                    Spacer(Modifier.size(10.dp))
-                    BoutonFleche(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Mois suivant") {
-                        moisTexte = mois.plusMonths(1).toString()
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
-                Calendrier(objectif, mois, aujourdhui, donnees, onCycler)
-                Spacer(Modifier.height(16.dp))
+        item { Section("Objectifs du mois") }
+        if (mensuels.isEmpty()) {
+            item { Vide("Aucun objectif mensuel") }
+        }
+        items(mensuels, key = { it.id }) { o ->
+            Column {
+                CarteMensuel(o, aujourdhui, donnees, onCycler, onMenu, afficherPourcentage = true)
+                Spacer(Modifier.height(10.dp))
                 Legende()
             }
         }
 
-        item {
-            Carte {
-                val semaines = Periodes.semainesDuMois(mois).reversed()
-                semaines.forEachIndexed { i, lundi ->
-                    if (i > 0) HorizontalDivider(color = p.separateur)
-                    LigneSemaine(objectif, lundi, aujourdhui, donnees)
-                }
+        item { Section("Objectifs hebdomadaires") }
+        if (semaines.none { donnees.hebdoDe(it).isNotEmpty() }) {
+            item { Vide("Aucun objectif hebdomadaire") }
+        }
+        items(semaines, key = { "s$it" }) { lundi ->
+            val hebdo = donnees.hebdoDe(lundi)
+            if (hebdo.isNotEmpty()) {
+                CarteSemaine(lundi, hebdo, aujourdhui, donnees, onCycler, onMenu)
             }
         }
     }
 }
 
 @Composable
-private fun LigneSemaine(objectif: Objectif, lundi: LocalDate, aujourdhui: LocalDate, donnees: Donnees) {
+private fun Section(titre: String) {
     val p = LocalPalette.current
-    val jours = Periodes.joursSemaine(lundi)
-    val reussis = donnees.reussis(objectif, jours)
-    val terminee = jours.last().isBefore(aujourdhui)
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Text(titre, color = p.texte, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+}
+
+@Composable
+private fun Vide(texte: String) {
+    val p = LocalPalette.current
+    Text(texte, color = p.texteDoux, fontSize = 15.sp)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun CarteSemaine(
+    lundi: LocalDate,
+    hebdo: List<Objectif>,
+    aujourdhui: LocalDate,
+    donnees: Donnees,
+    onCycler: (Objectif, LocalDate) -> Unit,
+    onMenu: (Objectif) -> Unit,
+) {
+    val p = LocalPalette.current
+    val terminee = lundi.plusDays(6).isBefore(aujourdhui)
+    Carte {
         Text(
             "Sem. ${Periodes.libelleSemaine(lundi)}",
-            color = p.texte,
-            fontSize = 16.sp,
-            modifier = Modifier.weight(1f),
+            color = p.texteDoux,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
         )
-        when {
-            !terminee -> Badge("$reussis / 7", p.caseVide, p.texteDoux)
-            reussis == 7 -> Badge("7 / 7", p.badgeVertFond, p.badgeVertTexte)
-            else -> Badge("$reussis / 7", p.badgeOrangeFond, p.badgeOrangeTexte)
+        hebdo.forEachIndexed { i, o ->
+            if (i > 0) HorizontalDivider(color = p.separateur, modifier = Modifier.padding(top = 12.dp))
+            Column(
+                Modifier.fillMaxWidth()
+                    .combinedClickable(onClick = {}, onLongClick = { onMenu(o) })
+                    .padding(top = 12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(o.nom, color = p.texte, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    val reussis = donnees.reussis(o)
+                    val (fond, couleur) = when {
+                        !terminee -> p.caseVide to p.texteDoux
+                        reussis == 7 -> p.badgeVertFond to p.badgeVertTexte
+                        else -> p.badgeOrangeFond to p.badgeOrangeTexte
+                    }
+                    Badge("$reussis / 7", fond, couleur)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "${donnees.pourcentage(o)} %",
+                        color = couleur,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(48.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                RondsSemaine(o, aujourdhui, donnees, onCycler, 30.dp)
+            }
         }
     }
 }

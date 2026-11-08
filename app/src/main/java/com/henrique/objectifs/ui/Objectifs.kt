@@ -1,6 +1,5 @@
 package com.henrique.objectifs.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,23 +15,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.henrique.objectifs.data.Donnees
@@ -44,21 +40,20 @@ import com.henrique.objectifs.data.moment
 import java.time.LocalDate
 import java.time.YearMonth
 
+/** Semaine et mois EN COURS uniquement ; les autres périodes se consultent dans l'Historique. */
 @Composable
 fun EcranObjectifs(
     donnees: Donnees,
     aujourdhui: LocalDate,
     onCycler: (Objectif, LocalDate) -> Unit,
     onAjouter: (Periode) -> Unit,
-    onSupprimer: (Objectif) -> Unit,
+    onMenu: (Objectif) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val p = LocalPalette.current
     var onglet by rememberSaveable { mutableIntStateOf(0) }
-    var lundiTexte by rememberSaveable { mutableStateOf(Periodes.lundi(aujourdhui).toString()) }
-    var moisTexte by rememberSaveable { mutableStateOf(YearMonth.from(aujourdhui).toString()) }
-    val lundi = LocalDate.parse(lundiTexte)
-    val mois = YearMonth.parse(moisTexte)
+    val lundi = Periodes.lundi(aujourdhui)
+    val mois = YearMonth.from(aujourdhui)
 
     Box(modifier.fillMaxSize()) {
         LazyColumn(
@@ -68,30 +63,18 @@ fun EcranObjectifs(
         ) {
             item {
                 EnTete(
-                    sousTitre = if (onglet == 0) "Semaine ${Periodes.libelleSemaine(lundi)}" else Periodes.nomMois(mois),
+                    sousTitre = if (onglet == 0) Periodes.libellePeriode(Periode.HEBDO, lundi) else Periodes.nomMois(mois),
                     titre = "Mes objectifs",
-                    onPrecedent = {
-                        if (onglet == 0) lundiTexte = lundi.minusWeeks(1).toString()
-                        else moisTexte = mois.minusMonths(1).toString()
-                    },
-                    onSuivant = {
-                        if (onglet == 0) lundiTexte = lundi.plusWeeks(1).toString()
-                        else moisTexte = mois.plusMonths(1).toString()
-                    },
-                    onAujourdhui = {
-                        lundiTexte = Periodes.lundi(aujourdhui).toString()
-                        moisTexte = YearMonth.from(aujourdhui).toString()
-                    },
                 )
             }
-            item { Segmente(listOf("Semaine", "Mois"), onglet) { onglet = it } }
+            item { Segmente(listOf("Hebdomadaire", "Mensuel"), onglet) { onglet = it } }
 
-            val liste = if (onglet == 0) donnees.hebdo else donnees.mensuels
+            val liste = if (onglet == 0) donnees.hebdoDe(lundi) else donnees.mensuelsDe(mois)
             if (liste.isEmpty()) {
                 item {
                     Text(
-                        if (onglet == 0) "Aucun objectif de la semaine.\nAppuie sur + pour en ajouter un."
-                        else "Aucun objectif du mois.\nAppuie sur + pour en ajouter un.",
+                        if (onglet == 0) "Aucun objectif cette semaine.\nAppuie sur + pour en créer un, ou duplique un objectif depuis l'Historique."
+                        else "Aucun objectif ce mois-ci.\nAppuie sur + pour en créer un, ou duplique un objectif depuis l'Historique.",
                         color = p.texteDoux,
                         fontSize = 15.sp,
                         modifier = Modifier.padding(top = 8.dp, start = 4.dp),
@@ -99,17 +82,17 @@ fun EcranObjectifs(
                 }
             }
             items(liste, key = { it.id }) { o ->
-                if (onglet == 0) CarteHebdo(o, lundi, aujourdhui, donnees, onCycler, onSupprimer)
-                else CarteMensuel(o, mois, aujourdhui, donnees, onCycler, onSupprimer)
+                if (onglet == 0) CarteHebdo(o, aujourdhui, donnees, onCycler, onMenu)
+                else CarteMensuel(o, aujourdhui, donnees, onCycler, onMenu)
             }
             if (liste.isNotEmpty()) {
                 item {
                     Text(
-                        "Appui long sur un objectif pour le supprimer",
+                        "Appui long sur un objectif : renommer, dupliquer, supprimer",
                         color = p.texteDoux,
                         fontSize = 13.sp,
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -128,83 +111,73 @@ fun EcranObjectifs(
 }
 
 @Composable
-fun EnTete(
-    sousTitre: String,
-    titre: String,
-    onPrecedent: (() -> Unit)? = null,
-    onSuivant: (() -> Unit)? = null,
-    onAujourdhui: (() -> Unit)? = null,
-) {
+fun EnTete(sousTitre: String, titre: String) {
     val p = LocalPalette.current
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                sousTitre,
-                color = p.texteDoux,
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f).let { if (onAujourdhui != null) it.clickable(onClick = onAujourdhui) else it },
-            )
-            if (onPrecedent != null) {
-                IconButton(onClick = onPrecedent) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Précédent", tint = p.texteDoux)
-                }
-            }
-            if (onSuivant != null) {
-                IconButton(onClick = onSuivant) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Suivant", tint = p.texteDoux)
-                }
+        Text(sousTitre, color = p.texteDoux, fontSize = 16.sp)
+        Text(titre, color = p.texte, fontSize = 34.sp, fontWeight = FontWeight.Bold, lineHeight = 40.sp)
+    }
+}
+
+/** Les 7 ronds d'une semaine, lettres au-dessus. */
+@Composable
+fun RondsSemaine(
+    objectif: Objectif,
+    aujourdhui: LocalDate,
+    donnees: Donnees,
+    onCycler: (Objectif, LocalDate) -> Unit,
+    taille: androidx.compose.ui.unit.Dp,
+) {
+    LettresJours()
+    Spacer(Modifier.height(6.dp))
+    Row(Modifier.fillMaxWidth()) {
+        Periodes.joursSemaine(objectif.debut).forEach { jour ->
+            val m = moment(jour, aujourdhui)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Pastille(
+                    periode = Periode.HEBDO,
+                    etat = donnees.etat(objectif, jour),
+                    moment = m,
+                    taille = taille,
+                    onClick = if (m == Moment.FUTUR) null else ({ onCycler(objectif, jour) }),
+                )
             }
         }
-        Text(titre, color = p.texte, fontSize = 34.sp, fontWeight = FontWeight.Bold, lineHeight = 40.sp)
     }
 }
 
 @Composable
 private fun CarteHebdo(
     objectif: Objectif,
-    lundi: LocalDate,
     aujourdhui: LocalDate,
     donnees: Donnees,
     onCycler: (Objectif, LocalDate) -> Unit,
-    onSupprimer: (Objectif) -> Unit,
+    onMenu: (Objectif) -> Unit,
 ) {
     val p = LocalPalette.current
-    Carte(onAppuiLong = { onSupprimer(objectif) }) {
+    Carte(onAppuiLong = { onMenu(objectif) }) {
         Text(objectif.nom, color = p.texte, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        LettresJours()
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth()) {
-            Periodes.joursSemaine(lundi).forEach { jour ->
-                val m = moment(jour, aujourdhui)
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Pastille(
-                        periode = Periode.HEBDO,
-                        etat = donnees.etat(objectif, jour),
-                        moment = m,
-                        taille = 38.dp,
-                        onClick = if (m == Moment.FUTUR) null else ({ onCycler(objectif, jour) }),
-                    )
-                }
-            }
-        }
+        RondsSemaine(objectif, aujourdhui, donnees, onCycler, 38.dp)
     }
 }
 
+/** Carte d'un objectif mensuel : compteur, barre, carré du jour (si mois en cours) et calendrier. */
 @Composable
-private fun CarteMensuel(
+fun CarteMensuel(
     objectif: Objectif,
-    mois: YearMonth,
     aujourdhui: LocalDate,
     donnees: Donnees,
     onCycler: (Objectif, LocalDate) -> Unit,
-    onSupprimer: (Objectif) -> Unit,
+    onMenu: (Objectif) -> Unit,
+    afficherPourcentage: Boolean = false,
 ) {
     val p = LocalPalette.current
+    val mois = objectif.mois
     val total = mois.lengthOfMonth()
-    val reussis = donnees.reussisDuMois(objectif, mois)
+    val reussis = donnees.reussis(objectif)
     val moisCourant = mois == YearMonth.from(aujourdhui)
-    Carte(onAppuiLong = { onSupprimer(objectif) }) {
+    Carte(onAppuiLong = { onMenu(objectif) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -217,7 +190,12 @@ private fun CarteMensuel(
                 Text(objectif.nom, color = p.texte, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("$reussis / $total j", color = p.texte, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (afficherPourcentage) "$reussis / $total j · ${donnees.pourcentage(objectif)} %" else "$reussis / $total j",
+                    color = p.texte,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
                 Spacer(Modifier.height(6.dp))
                 BarreProgression(reussis.toFloat() / total, Modifier.width(80.dp))
             }

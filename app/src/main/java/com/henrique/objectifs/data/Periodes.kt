@@ -14,11 +14,18 @@ object Periodes {
 
     fun joursSemaine(lundi: LocalDate): List<LocalDate> = (0L..6L).map { lundi.plusDays(it) }
 
-    /** Lundis des semaines qui touchent ce mois (du 1er au dernier jour). */
-    fun semainesDuMois(mois: YearMonth): List<LocalDate> {
+    /** Lignes du calendrier : lundis des semaines qui touchent ce mois. */
+    fun lignesCalendrier(mois: YearMonth): List<LocalDate> {
         val fin = lundi(mois.atEndOfMonth())
         return generateSequence(lundi(mois.atDay(1))) { it.plusWeeks(1) }.takeWhile { !it.isAfter(fin) }.toList()
     }
+
+    /** Mois auquel appartient une semaine (celui de son jeudi) : chaque semaine est dans un seul mois. */
+    fun moisDeSemaine(lundi: LocalDate): YearMonth = YearMonth.from(lundi.plusDays(3))
+
+    /** Lundis des semaines rattachées à ce mois. */
+    fun semainesDuMois(mois: YearMonth): List<LocalDate> =
+        lignesCalendrier(mois).filter { moisDeSemaine(it) == mois }
 
     fun nomMois(mois: YearMonth): String = nomMoisSeul(mois).replaceFirstChar { it.uppercase() } + " " + mois.year
 
@@ -37,4 +44,8 @@ object Periodes {
             "du ${numero(lundi)} ${moisCourt(lundi)} au ${numero(dimanche)} ${moisCourt(dimanche)}"
         }
     }
+
+    /** « Semaine du 2 au 8 nov. » ou « Novembre 2026 » */
+    fun libellePeriode(periode: Periode, debut: LocalDate): String =
+        if (periode == Periode.HEBDO) "Semaine ${libelleSemaine(debut)}" else nomMois(YearMonth.from(debut))
 }

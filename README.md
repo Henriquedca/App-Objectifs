@@ -8,10 +8,11 @@ avec un widget pour l'écran d'accueil / de verrouillage.
 
 ## Utilisation
 
-- **Suivi jour par jour** : 1 clic = vert (réussi), 2e clic = rouge (raté), 3e clic = vide. Pas de clic = oubli. Les jours futurs (pointillés) ne sont pas cliquables.
-- **Objectifs** : onglet *Semaine* (7 ronds L→D par objectif) et onglet *Mois* (carré du jour + compteur « x / 30 j » + calendrier du mois). Flèches pour changer de semaine / de mois, toucher le sous-titre pour revenir à aujourd'hui. `+` pour ajouter, appui long sur une carte pour supprimer.
-- **Historique** : par objectif, calendrier mensuel coloré + bilan par semaine (« x / 7 »).
-- **Widget** (écran de verrouillage) : ronds de la semaine pour les objectifs hebdo, puis pour les objectifs du mois : compteur, barre et carré du jour aligné sous le « D ». 4 objectifs max par type.
+- **Suivi jour par jour** : 1 clic = vert (réussi), 2e clic = rouge (raté), 3e clic = vide. Pas de clic = oubli. Les jours futurs ne sont pas cliquables.
+- **Un objectif vit sur une seule période** : une semaine (hebdomadaire) ou un mois (mensuel). Pour le reconduire : appui long → *Dupliquer* et choisir la semaine / le mois. L'historique est conservé.
+- **Objectifs** : semaine et mois en cours uniquement (onglets *Hebdomadaire* / *Mensuel*). `+` pour créer (nom 10 caractères max, type, période). Appui long : renommer, dupliquer, supprimer.
+- **Historique** : navigation par mois ; objectifs du mois (calendrier, « x / 30 j », %) et objectifs hebdomadaires de chaque semaine du mois (« x / 7 », %, ronds modifiables). Une semaine est rattachée au mois de son jeudi.
+- **Widget** (écran de verrouillage) : carte claire « 🎯 Objectifs », ronds L→D avec la lettre dedans, objectif du mois avec son carré aligné sous le « D ». 4 objectifs max par type.
 - Thème clair ou sombre selon le réglage du téléphone.
 
 ## Écran de verrouillage (Samsung)

@@ -23,11 +23,14 @@ class Stockage(context: Context) {
             (0 until tableau.length()).mapNotNull { i ->
                 val o = tableau.optJSONObject(i) ?: return@mapNotNull null
                 runCatching {
+                    val periode = Periode.valueOf(o.getString("periode"))
+                    // Anciennes versions : pas de "debut", on prend la période de création.
+                    val date = LocalDate.parse(o.optString("debut").ifEmpty { o.getString("creeLe") })
                     Objectif(
                         id = o.getString("id"),
                         nom = o.getString("nom"),
-                        periode = Periode.valueOf(o.getString("periode")),
-                        creeLe = LocalDate.parse(o.getString("creeLe")),
+                        periode = periode,
+                        debut = debutPeriode(periode, date),
                     )
                 }.getOrNull()
             }
@@ -46,9 +49,19 @@ class Stockage(context: Context) {
         return Donnees(objectifs(), etats)
     }
 
-    fun ajouter(nom: String, periode: Periode, aujourdhui: LocalDate = LocalDate.now()) {
-        val nouveau = Objectif(UUID.randomUUID().toString(), nom.trim(), periode, aujourdhui)
-        prefs.edit().putString(CLE_LISTE, versJson(objectifs() + nouveau)).commit()
+    fun ajouter(nom: String, periode: Periode, date: LocalDate) {
+        val nouveau = Objectif(UUID.randomUUID().toString(), nettoyer(nom), periode, debutPeriode(periode, date))
+        enregistrer(objectifs() + nouveau)
+    }
+
+    fun renommer(id: String, nom: String) {
+        enregistrer(objectifs().map { if (it.id == id) it.copy(nom = nettoyer(nom)) else it })
+    }
+
+    /** Copie l'objectif (nom + type) sur la période contenant [date], sans son historique. */
+    fun dupliquer(id: String, date: LocalDate) {
+        val source = objectifs().firstOrNull { it.id == id } ?: return
+        ajouter(source.nom, source.periode, date)
     }
 
     fun supprimer(id: String) {
@@ -71,6 +84,12 @@ class Stockage(context: Context) {
         return suivant
     }
 
+    private fun nettoyer(nom: String) = nom.trim().take(LIMITE_NOM)
+
+    private fun enregistrer(liste: List<Objectif>) {
+        prefs.edit().putString(CLE_LISTE, versJson(liste)).commit()
+    }
+
     private fun cleEtat(id: String, jour: LocalDate) = "$PREFIXE_ETAT$id|$jour"
 
     private fun versJson(liste: List<Objectif>): String {
@@ -81,7 +100,7 @@ class Stockage(context: Context) {
                     .put("id", o.id)
                     .put("nom", o.nom)
                     .put("periode", o.periode.name)
-                    .put("creeLe", o.creeLe.toString())
+                    .put("debut", o.debut.toString())
             )
         }
         return tableau.toString()

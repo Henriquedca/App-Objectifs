@@ -46,7 +46,10 @@ fun App() {
 
     var ecran by rememberSaveable { mutableIntStateOf(0) }
     var ajout by rememberSaveable { mutableStateOf<Periode?>(null) }
-    var aSupprimer by remember { mutableStateOf<Objectif?>(null) }
+    // Dialogues ouverts depuis l'appui long : 0 = menu, 1 = renommer, 2 = dupliquer, 3 = supprimer
+    var cible by remember { mutableStateOf<Objectif?>(null) }
+    var action by remember { mutableIntStateOf(0) }
+    val ouvrirMenu: (Objectif) -> Unit = { cible = it; action = 0 }
 
     fun modifie() {
         version++
@@ -94,7 +97,7 @@ fun App() {
                 aujourdhui = aujourdhui,
                 onCycler = cycler,
                 onAjouter = { ajout = it },
-                onSupprimer = { aSupprimer = it },
+                onMenu = ouvrirMenu,
                 modifier = Modifier.padding(padding),
             )
         } else {
@@ -102,6 +105,7 @@ fun App() {
                 donnees = donnees,
                 aujourdhui = aujourdhui,
                 onCycler = cycler,
+                onMenu = ouvrirMenu,
                 modifier = Modifier.padding(padding),
             )
         }
@@ -110,23 +114,53 @@ fun App() {
     ajout?.let { periodeInitiale ->
         DialogueAjout(
             periodeInitiale = periodeInitiale,
-            onAjouter = { nom, periode ->
-                stockage.ajouter(nom, periode)
+            aujourdhui = aujourdhui,
+            onAjouter = { nom, periode, date ->
+                stockage.ajouter(nom, periode, date)
                 ajout = null
                 modifie()
             },
             onAnnuler = { ajout = null },
         )
     }
-    aSupprimer?.let { objectif ->
-        DialogueSuppression(
-            objectif = objectif,
-            onSupprimer = {
-                stockage.supprimer(objectif.id)
-                aSupprimer = null
-                modifie()
-            },
-            onAnnuler = { aSupprimer = null },
-        )
+    cible?.let { objectif ->
+        val fermer = { cible = null }
+        when (action) {
+            0 -> DialogueMenu(
+                objectif = objectif,
+                onRenommer = { action = 1 },
+                onDupliquer = { action = 2 },
+                onSupprimer = { action = 3 },
+                onFermer = fermer,
+            )
+            1 -> DialogueRenommer(
+                objectif = objectif,
+                onRenommer = { nom ->
+                    stockage.renommer(objectif.id, nom)
+                    fermer()
+                    modifie()
+                },
+                onAnnuler = fermer,
+            )
+            2 -> DialogueDupliquer(
+                objectif = objectif,
+                aujourdhui = aujourdhui,
+                onDupliquer = { date ->
+                    stockage.dupliquer(objectif.id, date)
+                    fermer()
+                    modifie()
+                },
+                onAnnuler = fermer,
+            )
+            else -> DialogueSuppression(
+                objectif = objectif,
+                onSupprimer = {
+                    stockage.supprimer(objectif.id)
+                    fermer()
+                    modifie()
+                },
+                onAnnuler = fermer,
+            )
+        }
     }
 }
