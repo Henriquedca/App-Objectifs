@@ -1,0 +1,72 @@
+name: Build APK
+
+on:
+  push:
+    branches-ignore:
+      - apk
+      - ci-log
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compiler l'APK
+        id: build
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee build.log
+
+      - name: Publier le log sur la branche ci-log
+        if: always()
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/log && cp build.log /tmp/log/build.log 2>/dev/null || echo "pas de log" > /tmp/log/build.log
+          cd /tmp/log
+          echo "Commit: ${GITHUB_SHA} (${GITHUB_REF_NAME}) - run ${GITHUB_RUN_NUMBER} - statut: ${{ steps.build.outcome }}" > STATUS.txt
+          git init -q -b ci-log
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "Log build ${GITHUB_RUN_NUMBER} (${{ steps.build.outcome }})"
+          git push -fq "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-log
+
+      - name: Publier l'APK sur la branche apk
+        if: success()
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/apk && cp app/build/outputs/apk/release/app-release.apk /tmp/apk/Objectifs.apk
+          cd /tmp/apk
+          echo "Build ${GITHUB_RUN_NUMBER} - commit ${GITHUB_SHA} (${GITHUB_REF_NAME})" > VERSION.txt
+          git init -q -b apk
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "APK build ${GITHUB_RUN_NUMBER}"
+          git push -fq "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk
+
+      - name: Créer la Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Objectifs 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: "true"
+          files: app/build/outputs/apk/release/app-release.apk
+          body: |
+            Build ${{ github.run_number }} — branche `${{ github.ref_name }}`, commit ${{ github.sha }}.
+            Installer `app-release.apk` sur le téléphone (remplace la version précédente sans perte de données).

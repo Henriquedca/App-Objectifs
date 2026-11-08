@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Objectifs</string>
+    <string name="widget_nom">Objectifs</string>
+    <string name="widget_description">Objectifs de la semaine et du mois</string>
+</resources>
