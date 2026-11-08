@@ -11,6 +11,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
@@ -56,8 +57,8 @@ import com.henrique.objectifs.data.moment
 import java.time.LocalDate
 import java.time.YearMonth
 
-/** Glance limite le nombre d'enfants par Row/Column : 4 objectifs max par type, regroupés en sous-colonnes. */
-private const val MAX_PAR_TYPE = 4
+/** Glance limite le nombre d'enfants par Row/Column (10) : 6 objectifs max par type, regroupés en sous-colonnes. */
+private const val MAX_PAR_TYPE = 6
 private val CELLULE = 30.dp
 private val PASTILLE = 27.dp
 private val VERSION = intPreferencesKey("version")
@@ -69,14 +70,14 @@ private val LETTRE_PLEINE = ColorProvider(Color.White)
 class ObjectifsWidget : GlanceAppWidget() {
 
     override val stateDefinition: GlanceStateDefinition<*> = PreferencesGlanceStateDefinition
-    override val sizeMode: SizeMode = SizeMode.Single
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val stockage = Stockage(context)
         provideContent {
             // Lire la version abonne la composition aux rafraîchissements.
             val version = currentState<Preferences>()[VERSION] ?: 0
-            Contenu(stockage, LocalDate.now(), version)
+            Contenu(stockage, LocalDate.now(), LocalSize.current.height.value, version)
         }
     }
 }
@@ -115,50 +116,93 @@ private fun cliqueCycler(objectif: Objectif, jour: LocalDate) =
 
 private val ouvrirApp = GlanceModifier.clickable(actionStartActivity<MainActivity>(), rippleOverride = R.drawable.w_clic)
 
+// Hauteurs approximatives (dp) pour savoir ce qui tient dans la zone fixée par l'hôte.
+private const val H_MARGES = 24f
+private const val H_TITRE = 32f
+private const val H_HEBDO = 36f
+private const val H_SEPARATEUR = 15f
+private const val H_LIBELLE_MOIS = 18f
+private const val H_MENSUEL = 34f
+private const val H_RESTE = 20f
+
 @Composable
-private fun Contenu(stockage: Stockage, aujourdhui: LocalDate, @Suppress("UNUSED_PARAMETER") version: Int) {
+private fun Contenu(stockage: Stockage, aujourdhui: LocalDate, hauteurHote: Float, @Suppress("UNUSED_PARAMETER") version: Int) {
+    // Certains hôtes (aperçus) ne donnent pas de taille : on n'impose alors pas de limite.
+    val hauteurDispo = if (hauteurHote < 60f) Float.MAX_VALUE else hauteurHote
     val lundi = Periodes.lundi(aujourdhui)
     val mois = YearMonth.from(aujourdhui)
     val tous = stockage.objectifs()
-    val hebdo = tous.filter { it.periode == Periode.HEBDO && it.debut == lundi }.take(MAX_PAR_TYPE)
-    val mensuels = tous.filter { it.periode == Periode.MENSUEL && it.mois == mois }.take(MAX_PAR_TYPE)
+    val tousHebdo = tous.filter { it.periode == Periode.HEBDO && it.debut == lundi }
+    val tousMensuels = tous.filter { it.periode == Periode.MENSUEL && it.mois == mois }
 
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .appWidgetBackground()
-            .cornerRadius(26.dp)
-            .background(Color(0xD9F6F6F4))
-            .padding(horizontal = 18.dp, vertical = 12.dp)
-    ) {
-        Text(
-            text = "\uD83C\uDFAF Objectifs",
-            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 6.dp).then(ouvrirApp),
-            style = TextStyle(color = TEXTE, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
-        )
-        if (hebdo.isEmpty() && mensuels.isEmpty()) {
-            Text(
-                text = "Aucun objectif cette semaine",
-                modifier = GlanceModifier.fillMaxWidth().then(ouvrirApp),
-                style = TextStyle(color = TEXTE_DOUX, fontSize = 14.sp, textAlign = TextAlign.Center),
-            )
+    // On remplit tant que ça tient : d'abord on sacrifie le titre, puis on affiche « +N autres ».
+    fun hauteur(titre: Boolean, nH: Int, nM: Int, reste: Boolean): Float =
+        H_MARGES + (if (titre) H_TITRE else 0f) + nH * H_HEBDO +
+            (if (nM > 0) (if (nH > 0) H_SEPARATEUR else 0f) + H_LIBELLE_MOIS + nM * H_MENSUEL else 0f) +
+            (if (reste) H_RESTE else 0f)
+
+    var nH = minOf(tousHebdo.size, MAX_PAR_TYPE)
+    var nM = minOf(tousMensuels.size, MAX_PAR_TYPE)
+    val total = tousHebdo.size + tousMensuels.size
+    var titre = hauteur(true, nH, nM, nH + nM < total) <= hauteurDispo
+    if (!titre) {
+        while (hauteur(false, nH, nM, nH + nM < total) > hauteurDispo && nH + nM > 1) {
+            if (nM > 0) nM-- else nH--
         }
-        Column(modifier = GlanceModifier.fillMaxWidth()) {
-            hebdo.forEach { o -> LigneHebdo(o, stockage, aujourdhui) }
-        }
-        if (mensuels.isNotEmpty()) {
-            if (hebdo.isNotEmpty()) {
-                Box(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)) {
-                    Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(Color(0x33000000))) {}
+    }
+    if (total == 0) titre = true
+    val hebdo = tousHebdo.take(nH)
+    val mensuels = tousMensuels.take(nM)
+    val masques = total - nH - nM
+
+    // Zone transparente ; seule la carte (à la hauteur du contenu) a un fond.
+    Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .appWidgetBackground()
+                .cornerRadius(26.dp)
+                .background(Color(0xD9F6F6F4))
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+        ) {
+            if (titre) {
+                Text(
+                    text = "\uD83C\uDFAF Objectifs",
+                    modifier = GlanceModifier.fillMaxWidth().padding(bottom = 6.dp).then(ouvrirApp),
+                    style = TextStyle(color = TEXTE, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+                )
+            }
+            if (total == 0) {
+                Text(
+                    text = "Aucun objectif cette semaine",
+                    modifier = GlanceModifier.fillMaxWidth().then(ouvrirApp),
+                    style = TextStyle(color = TEXTE_DOUX, fontSize = 14.sp, textAlign = TextAlign.Center),
+                )
+            }
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                hebdo.forEach { o -> LigneHebdo(o, stockage, aujourdhui) }
+            }
+            if (mensuels.isNotEmpty()) {
+                if (hebdo.isNotEmpty()) {
+                    Box(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)) {
+                        Box(modifier = GlanceModifier.fillMaxWidth().height(1.dp).background(Color(0x33000000))) {}
+                    }
+                }
+                Text(
+                    text = "OBJECTIF DE ${Periodes.nomMoisSeul(mois).uppercase()}",
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    style = TextStyle(color = TEXTE_DOUX, fontSize = 12.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+                )
+                Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    mensuels.forEach { o -> LigneMensuel(o, stockage, aujourdhui) }
                 }
             }
-            Text(
-                text = "OBJECTIF DE ${Periodes.nomMoisSeul(mois).uppercase()}",
-                modifier = GlanceModifier.fillMaxWidth(),
-                style = TextStyle(color = TEXTE_DOUX, fontSize = 12.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
-            )
-            Column(modifier = GlanceModifier.fillMaxWidth()) {
-                mensuels.forEach { o -> LigneMensuel(o, stockage, aujourdhui) }
+            if (masques > 0) {
+                Text(
+                    text = "+$masques autre" + (if (masques > 1) "s objectifs" else " objectif") + " · ouvrir l'app",
+                    modifier = GlanceModifier.fillMaxWidth().padding(top = 4.dp).then(ouvrirApp),
+                    style = TextStyle(color = TEXTE_DOUX, fontSize = 12.sp, textAlign = TextAlign.Center),
+                )
             }
         }
     }
