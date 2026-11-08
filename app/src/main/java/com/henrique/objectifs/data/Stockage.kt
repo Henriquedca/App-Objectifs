@@ -10,7 +10,7 @@ import java.util.UUID
 /**
  * Stockage local (SharedPreferences).
  *  - "liste" : JSON des objectifs
- *  - "e|<id>|<cle>" : état d'un objectif pour une période (absent = VIDE)
+ *  - "e|<id>|<aaaa-mm-jj>" : état d'un objectif pour un jour (absent = VIDE)
  */
 class Stockage(context: Context) {
     private val prefs: SharedPreferences =
@@ -58,20 +58,20 @@ class Stockage(context: Context) {
         edition.commit()
     }
 
-    fun etat(id: String, cle: String): Etat =
-        prefs.getString(cleEtat(id, cle), null)
+    fun etat(id: String, jour: LocalDate): Etat =
+        prefs.getString(cleEtat(id, jour), null)
             ?.let { runCatching { Etat.valueOf(it) }.getOrNull() }
             ?: Etat.VIDE
 
-    fun cycler(id: String, cle: String): Etat {
-        val suivant = etat(id, cle).suivant()
+    fun cycler(id: String, jour: LocalDate): Etat {
+        val suivant = etat(id, jour).suivant()
         val edition = prefs.edit()
-        if (suivant == Etat.VIDE) edition.remove(cleEtat(id, cle)) else edition.putString(cleEtat(id, cle), suivant.name)
+        if (suivant == Etat.VIDE) edition.remove(cleEtat(id, jour)) else edition.putString(cleEtat(id, jour), suivant.name)
         edition.commit()
         return suivant
     }
 
-    private fun cleEtat(id: String, cle: String) = "$PREFIXE_ETAT$id|$cle"
+    private fun cleEtat(id: String, jour: LocalDate) = "$PREFIXE_ETAT$id|$jour"
 
     private fun versJson(liste: List<Objectif>): String {
         val tableau = JSONArray()

@@ -8,11 +8,11 @@ avec un widget pour l'écran d'accueil / de verrouillage.
 
 ## Utilisation
 
-- **Pastilles** : 1 clic = vert (réussi), 2e clic = rouge (raté), 3e clic = vide. Pas de clic = oubli.
-- Les pastilles sont alignées dans la colonne du **D** (dimanche) ; une semaine appartient au mois de son dimanche.
-- **Accueil** : semaines du mois (flèches pour changer de mois, toucher le titre pour revenir au mois courant), `+` pour ajouter un objectif, appui long sur un objectif pour le supprimer.
-- **Historique** : grille calendaire (résumé de la semaine sous chaque dimanche) + bilan par semaine et du mois.
-- **Widget** : semaine et mois en cours, 4 objectifs max par type, pastilles cliquables.
+- **Suivi jour par jour** : 1 clic = vert (réussi), 2e clic = rouge (raté), 3e clic = vide. Pas de clic = oubli. Les jours futurs (pointillés) ne sont pas cliquables.
+- **Objectifs** : onglet *Semaine* (7 ronds L→D par objectif) et onglet *Mois* (carré du jour + compteur « x / 30 j » + calendrier du mois). Flèches pour changer de semaine / de mois, toucher le sous-titre pour revenir à aujourd'hui. `+` pour ajouter, appui long sur une carte pour supprimer.
+- **Historique** : par objectif, calendrier mensuel coloré + bilan par semaine (« x / 7 »).
+- **Widget** (écran de verrouillage) : ronds de la semaine pour les objectifs hebdo, puis pour les objectifs du mois : compteur, barre et carré du jour aligné sous le « D ». 4 objectifs max par type.
+- Thème clair ou sombre selon le réglage du téléphone.
 
 ## Écran de verrouillage (Samsung)
 

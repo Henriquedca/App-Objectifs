@@ -10,6 +10,6 @@
         android:pathData="M44,54m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0" />
     <!-- carré (mensuel) -->
     <path
-        android:fillColor="#A5D6A7"
+        android:fillColor="#4ADE80"
         android:pathData="M62,42h20v20h-20z" />
 </vector>

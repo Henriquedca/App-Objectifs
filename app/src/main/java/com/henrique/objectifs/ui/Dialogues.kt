@@ -22,13 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.henrique.objectifs.data.Etat
+import com.henrique.objectifs.data.Moment
 import com.henrique.objectifs.data.Objectif
 import com.henrique.objectifs.data.Periode
 
 @Composable
-fun DialogueAjout(onAjouter: (String, Periode) -> Unit, onAnnuler: () -> Unit) {
+fun DialogueAjout(periodeInitiale: Periode, onAjouter: (String, Periode) -> Unit, onAnnuler: () -> Unit) {
     var nom by rememberSaveable { mutableStateOf("") }
-    var periode by rememberSaveable { mutableStateOf(Periode.HEBDO) }
+    var periode by rememberSaveable { mutableStateOf(periodeInitiale) }
     AlertDialog(
         onDismissRequest = onAnnuler,
         title = { Text("Nouvel objectif") },
@@ -42,8 +43,8 @@ fun DialogueAjout(onAjouter: (String, Periode) -> Unit, onAnnuler: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                ChoixPeriode("Hebdomadaire", Periode.HEBDO, periode == Periode.HEBDO) { periode = Periode.HEBDO }
-                ChoixPeriode("Mensuel", Periode.MENSUEL, periode == Periode.MENSUEL) { periode = Periode.MENSUEL }
+                ChoixPeriode("De la semaine (ronds)", Periode.HEBDO, periode == Periode.HEBDO) { periode = Periode.HEBDO }
+                ChoixPeriode("Du mois (carré)", Periode.MENSUEL, periode == Periode.MENSUEL) { periode = Periode.MENSUEL }
             }
         },
         confirmButton = {
@@ -61,7 +62,7 @@ private fun ChoixPeriode(libelle: String, periode: Periode, choisi: Boolean, onC
     ) {
         RadioButton(selected = choisi, onClick = onChoisir)
         Text(libelle, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Pastille(Etat.VIDE, periode, taille = 18.dp)
+        Pastille(periode, Etat.VIDE, Moment.PASSE, taille = 18.dp)
         Spacer(Modifier.width(8.dp))
     }
 }

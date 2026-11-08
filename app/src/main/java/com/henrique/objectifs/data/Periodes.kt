@@ -7,44 +7,34 @@ import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 
-/**
- * Une semaine va du lundi au dimanche et appartient au mois de son dimanche
- * (la pastille hebdo est placée sous le « D »).
- */
 object Periodes {
     val LETTRES_JOURS = listOf("L", "M", "M", "J", "V", "S", "D")
 
     fun lundi(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-    fun moisDeSemaine(lundi: LocalDate): YearMonth = YearMonth.from(lundi.plusDays(6))
+    fun joursSemaine(lundi: LocalDate): List<LocalDate> = (0L..6L).map { lundi.plusDays(it) }
 
-    fun cleSemaine(lundi: LocalDate): String = "S$lundi"
-
-    fun cleMois(mois: YearMonth): String = "M$mois"
-
-    /** Lundis des semaines dont le dimanche tombe dans ce mois. */
+    /** Lundis des semaines qui touchent ce mois (du 1er au dernier jour). */
     fun semainesDuMois(mois: YearMonth): List<LocalDate> {
-        val premierDimanche = mois.atDay(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
-        return generateSequence(premierDimanche) { it.plusWeeks(1) }
-            .takeWhile { YearMonth.from(it) == mois }
-            .map { it.minusDays(6) }
-            .toList()
+        val fin = lundi(mois.atEndOfMonth())
+        return generateSequence(lundi(mois.atDay(1))) { it.plusWeeks(1) }.takeWhile { !it.isAfter(fin) }.toList()
     }
 
-    fun nomMois(mois: YearMonth): String =
-        mois.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.FRENCH)
-            .replaceFirstChar { it.uppercase() } + " " + mois.year
+    fun nomMois(mois: YearMonth): String = nomMoisSeul(mois).replaceFirstChar { it.uppercase() } + " " + mois.year
 
-    fun moisCourt(date: LocalDate): String =
-        date.month.getDisplayName(TextStyle.SHORT, Locale.FRENCH)
+    fun nomMoisSeul(mois: YearMonth): String = mois.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.FRENCH)
 
-    /** « du 3 au 9 nov. » ou « du 27 oct. au 2 nov. » */
+    private fun moisCourt(date: LocalDate): String = date.month.getDisplayName(TextStyle.SHORT, Locale.FRENCH)
+
+    private fun numero(date: LocalDate): String = if (date.dayOfMonth == 1) "1er" else date.dayOfMonth.toString()
+
+    /** « du 2 au 8 nov. » ou « du 26 oct. au 1er nov. » */
     fun libelleSemaine(lundi: LocalDate): String {
         val dimanche = lundi.plusDays(6)
         return if (lundi.month == dimanche.month) {
-            "du ${lundi.dayOfMonth} au ${dimanche.dayOfMonth} ${moisCourt(dimanche)}"
+            "du ${numero(lundi)} au ${numero(dimanche)} ${moisCourt(dimanche)}"
         } else {
-            "du ${lundi.dayOfMonth} ${moisCourt(lundi)} au ${dimanche.dayOfMonth} ${moisCourt(dimanche)}"
+            "du ${numero(lundi)} ${moisCourt(lundi)} au ${numero(dimanche)} ${moisCourt(dimanche)}"
         }
     }
 }

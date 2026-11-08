@@ -3,7 +3,7 @@ package com.henrique.objectifs.data
 import java.time.LocalDate
 import java.time.YearMonth
 
-/** HEBDO = rond, MENSUEL = carré. */
+/** HEBDO = ronds (L→D), MENSUEL = carré + compteur de jours. Les deux se suivent jour par jour. */
 enum class Periode { HEBDO, MENSUEL }
 
 /** 1 clic = REUSSI (vert), 2e clic = RATE (rouge), 3e clic = retour à VIDE. */
@@ -17,28 +17,33 @@ enum class Etat {
     }
 }
 
+enum class Moment { PASSE, AUJOURDHUI, FUTUR }
+
+fun moment(jour: LocalDate, aujourdhui: LocalDate): Moment = when {
+    jour.isBefore(aujourdhui) -> Moment.PASSE
+    jour == aujourdhui -> Moment.AUJOURDHUI
+    else -> Moment.FUTUR
+}
+
 data class Objectif(
     val id: String,
     val nom: String,
     val periode: Periode,
     val creeLe: LocalDate,
-) {
-    /** Un objectif est affiché à partir du mois de sa création (pour pouvoir remplir les semaines déjà écoulées du mois). */
-    fun visiblePourSemaine(lundi: LocalDate): Boolean =
-        periode == Periode.HEBDO && !Periodes.moisDeSemaine(lundi).isBefore(YearMonth.from(creeLe))
-
-    fun visiblePourMois(mois: YearMonth): Boolean =
-        periode == Periode.MENSUEL && !mois.isBefore(YearMonth.from(creeLe))
-}
+)
 
 /** Instantané immuable des données, recréé à chaque modification (déclenche la recomposition). */
 data class Donnees(
     val objectifs: List<Objectif>,
     val etats: Map<String, Etat>,
 ) {
-    fun etat(objectif: Objectif, cle: String): Etat = etats["${objectif.id}|$cle"] ?: Etat.VIDE
+    val hebdo: List<Objectif> get() = objectifs.filter { it.periode == Periode.HEBDO }
+    val mensuels: List<Objectif> get() = objectifs.filter { it.periode == Periode.MENSUEL }
 
-    fun hebdoPour(lundi: LocalDate): List<Objectif> = objectifs.filter { it.visiblePourSemaine(lundi) }
+    fun etat(objectif: Objectif, jour: LocalDate): Etat = etats["${objectif.id}|$jour"] ?: Etat.VIDE
 
-    fun mensuelsPour(mois: YearMonth): List<Objectif> = objectifs.filter { it.visiblePourMois(mois) }
+    fun reussis(objectif: Objectif, jours: List<LocalDate>): Int = jours.count { etat(objectif, it) == Etat.REUSSI }
+
+    fun reussisDuMois(objectif: Objectif, mois: YearMonth): Int =
+        reussis(objectif, (1..mois.lengthOfMonth()).map { mois.atDay(it) })
 }

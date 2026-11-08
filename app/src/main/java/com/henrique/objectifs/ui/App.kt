@@ -1,22 +1,10 @@
 package com.henrique.objectifs.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,23 +14,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.henrique.objectifs.data.Objectif
-import com.henrique.objectifs.data.Periodes
+import com.henrique.objectifs.data.Periode
 import com.henrique.objectifs.data.Stockage
 import com.henrique.objectifs.widget.rafraichirWidgets
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.YearMonth
 
 @Composable
 fun App() {
     val context = LocalContext.current
+    val p = LocalPalette.current
     val stockage = remember { Stockage(context) }
     val scope = rememberCoroutineScope()
 
@@ -55,10 +44,8 @@ fun App() {
     val donnees = remember(version) { stockage.donnees() }
     val aujourdhui = remember(version) { LocalDate.now() }
 
-    var moisTexte by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
-    val mois = YearMonth.parse(moisTexte)
-    var onglet by rememberSaveable { mutableIntStateOf(0) }
-    var ajoutOuvert by rememberSaveable { mutableStateOf(false) }
+    var ecran by rememberSaveable { mutableIntStateOf(0) }
+    var ajout by rememberSaveable { mutableStateOf<Periode?>(null) }
     var aSupprimer by remember { mutableStateOf<Objectif?>(null) }
 
     fun modifie() {
@@ -66,55 +53,69 @@ fun App() {
         scope.launch { rafraichirWidgets(context) }
     }
 
-    Scaffold(
-        topBar = {
-            Column(Modifier.statusBarsPadding()) {
-                NavigationMois(
-                    mois = mois,
-                    onPrecedent = { moisTexte = mois.minusMonths(1).toString() },
-                    onSuivant = { moisTexte = mois.plusMonths(1).toString() },
-                    onAujourdhui = { moisTexte = YearMonth.now().toString() },
-                )
-                TabRow(selectedTabIndex = onglet) {
-                    Tab(selected = onglet == 0, onClick = { onglet = 0 }, text = { Text("Accueil") })
-                    Tab(selected = onglet == 1, onClick = { onglet = 1 }, text = { Text("Historique") })
-                }
-            }
-        },
-        floatingActionButton = {
-            if (onglet == 0) {
-                FloatingActionButton(onClick = { ajoutOuvert = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Ajouter un objectif")
-                }
-            }
-        },
-    ) { padding ->
-        val modifier = Modifier.padding(padding)
-        if (onglet == 0) {
-            EcranAccueil(
-                donnees = donnees,
-                mois = mois,
-                aujourdhui = aujourdhui,
-                onCycler = { objectif, cle ->
-                    stockage.cycler(objectif.id, cle)
-                    modifie()
-                },
-                onAppuiLong = { aSupprimer = it },
-                modifier = modifier,
-            )
-        } else {
-            EcranHistorique(donnees = donnees, mois = mois, aujourdhui = aujourdhui, modifier = modifier)
+    val cycler: (Objectif, LocalDate) -> Unit = { o, jour ->
+        if (!jour.isAfter(LocalDate.now())) {
+            stockage.cycler(o.id, jour)
+            modifie()
         }
     }
 
-    if (ajoutOuvert) {
+    Scaffold(
+        containerColor = p.fond,
+        bottomBar = {
+            NavigationBar(containerColor = p.carte, tonalElevation = 0.dp) {
+                val couleurs = NavigationBarItemDefaults.colors(
+                    selectedIconColor = p.vert,
+                    selectedTextColor = p.vert,
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = p.texteDoux,
+                    unselectedTextColor = p.texteDoux,
+                )
+                NavigationBarItem(
+                    selected = ecran == 0,
+                    onClick = { ecran = 0 },
+                    icon = { Icon(IconeCible, contentDescription = null) },
+                    label = { Text("Objectifs", fontWeight = FontWeight.SemiBold) },
+                    colors = couleurs,
+                )
+                NavigationBarItem(
+                    selected = ecran == 1,
+                    onClick = { ecran = 1 },
+                    icon = { Icon(IconeHistogramme, contentDescription = null) },
+                    label = { Text("Historique", fontWeight = FontWeight.SemiBold) },
+                    colors = couleurs,
+                )
+            }
+        },
+    ) { padding ->
+        if (ecran == 0) {
+            EcranObjectifs(
+                donnees = donnees,
+                aujourdhui = aujourdhui,
+                onCycler = cycler,
+                onAjouter = { ajout = it },
+                onSupprimer = { aSupprimer = it },
+                modifier = Modifier.padding(padding),
+            )
+        } else {
+            EcranHistorique(
+                donnees = donnees,
+                aujourdhui = aujourdhui,
+                onCycler = cycler,
+                modifier = Modifier.padding(padding),
+            )
+        }
+    }
+
+    ajout?.let { periodeInitiale ->
         DialogueAjout(
+            periodeInitiale = periodeInitiale,
             onAjouter = { nom, periode ->
                 stockage.ajouter(nom, periode)
-                ajoutOuvert = false
+                ajout = null
                 modifie()
             },
-            onAnnuler = { ajoutOuvert = false },
+            onAnnuler = { ajout = null },
         )
     }
     aSupprimer?.let { objectif ->
@@ -127,26 +128,5 @@ fun App() {
             },
             onAnnuler = { aSupprimer = null },
         )
-    }
-}
-
-@Composable
-private fun NavigationMois(mois: YearMonth, onPrecedent: () -> Unit, onSuivant: () -> Unit, onAujourdhui: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onPrecedent) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Mois précédent")
-        }
-        Text(
-            text = Periodes.nomMois(mois),
-            modifier = Modifier.weight(1f).clickable(onClick = onAujourdhui),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleLarge,
-        )
-        IconButton(onClick = onSuivant) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Mois suivant")
-        }
     }
 }
