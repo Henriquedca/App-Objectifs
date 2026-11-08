@@ -1,6 +1,6 @@
 # Objectifs
 
-App Android perso pour suivre des objectifs **hebdomadaires** (rond) et **mensuels** (carré),
+App Android perso pour suivre des objectifs **hebdomadaires** et **mensuels** ,
 avec un widget pour l'écran d'accueil / de verrouillage.
 
 - Kotlin + Jetpack Compose, widget Jetpack Glance
