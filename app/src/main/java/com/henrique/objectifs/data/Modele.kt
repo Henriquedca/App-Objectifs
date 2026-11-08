@@ -8,6 +8,18 @@ enum class Periode { HEBDO, MENSUEL }
 
 const val LIMITE_NOM = 10
 
+val EMOJIS_SUGGERES = listOf("🎯", "📚", "🍔", "📵", "🏃", "💧", "🧘", "💤", "🥗", "🚭", "🍷", "💪", "✍️", "🎸", "💰", "🧹")
+
+/** Dernier caractère visible (graphème) de [texte] : garde un seul émoji, même composé. */
+fun dernierGrapheme(texte: String): String {
+    if (texte.isEmpty()) return ""
+    val it = android.icu.text.BreakIterator.getCharacterInstance()
+    it.setText(texte)
+    val fin = it.last()
+    val debut = it.previous()
+    return if (debut == android.icu.text.BreakIterator.DONE) texte else texte.substring(debut, fin)
+}
+
 /** 1 clic = REUSSI (vert), 2e clic = RATE (rouge), 3e clic = retour à VIDE. */
 enum class Etat {
     VIDE, REUSSI, RATE;
@@ -40,7 +52,11 @@ data class Objectif(
     val nom: String,
     val periode: Periode,
     val debut: LocalDate,
+    val emoji: String = "",
 ) {
+    /** « 📚 Lire » ou « Lire » si pas d'émoji. */
+    val titre: String get() = if (emoji.isBlank()) nom else "$emoji $nom"
+
     val mois: YearMonth get() = YearMonth.from(debut)
 
     fun jours(): List<LocalDate> =

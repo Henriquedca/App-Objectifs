@@ -31,6 +31,7 @@ class Stockage(context: Context) {
                         nom = o.getString("nom"),
                         periode = periode,
                         debut = debutPeriode(periode, date),
+                        emoji = o.optString("emoji"),
                     )
                 }.getOrNull()
             }
@@ -49,19 +50,19 @@ class Stockage(context: Context) {
         return Donnees(objectifs(), etats)
     }
 
-    fun ajouter(nom: String, periode: Periode, date: LocalDate) {
-        val nouveau = Objectif(UUID.randomUUID().toString(), nettoyer(nom), periode, debutPeriode(periode, date))
+    fun ajouter(nom: String, emoji: String, periode: Periode, date: LocalDate) {
+        val nouveau = Objectif(UUID.randomUUID().toString(), nettoyer(nom), periode, debutPeriode(periode, date), dernierGrapheme(emoji.trim()))
         enregistrer(objectifs() + nouveau)
     }
 
-    fun renommer(id: String, nom: String) {
-        enregistrer(objectifs().map { if (it.id == id) it.copy(nom = nettoyer(nom)) else it })
+    fun modifier(id: String, nom: String, emoji: String) {
+        enregistrer(objectifs().map { if (it.id == id) it.copy(nom = nettoyer(nom), emoji = dernierGrapheme(emoji.trim())) else it })
     }
 
     /** Copie l'objectif (nom + type) sur la période contenant [date], sans son historique. */
     fun dupliquer(id: String, date: LocalDate) {
         val source = objectifs().firstOrNull { it.id == id } ?: return
-        ajouter(source.nom, source.periode, date)
+        ajouter(source.nom, source.emoji, source.periode, date)
     }
 
     fun supprimer(id: String) {
@@ -101,6 +102,7 @@ class Stockage(context: Context) {
                     .put("nom", o.nom)
                     .put("periode", o.periode.name)
                     .put("debut", o.debut.toString())
+                    .put("emoji", o.emoji)
             )
         }
         return tableau.toString()

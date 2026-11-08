@@ -171,7 +171,7 @@ private fun LigneHebdo(objectif: Objectif, stockage: Stockage, aujourdhui: Local
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = objectif.nom,
+            text = objectif.titre,
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight().then(ouvrirApp),
             style = TextStyle(color = TEXTE, fontSize = 16.sp, fontWeight = FontWeight.Medium),
@@ -208,7 +208,7 @@ private fun LigneMensuel(objectif: Objectif, stockage: Stockage, aujourdhui: Loc
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = objectif.nom,
+            text = objectif.titre,
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight().then(ouvrirApp),
             style = TextStyle(color = TEXTE, fontSize = 16.sp, fontWeight = FontWeight.Medium),

@@ -1,6 +1,15 @@
 package com.henrique.objectifs.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,7 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.henrique.objectifs.data.EMOJIS_SUGGERES
 import com.henrique.objectifs.data.Etat
+import com.henrique.objectifs.data.dernierGrapheme
 import com.henrique.objectifs.data.LIMITE_NOM
 import com.henrique.objectifs.data.Moment
 import com.henrique.objectifs.data.Objectif
@@ -50,6 +61,42 @@ private fun ChampNom(nom: String, onNom: (String) -> Unit) {
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/** Émoji : suggestions défilantes + champ pour en taper un autre au clavier. */
+@Composable
+private fun ChoixEmoji(emoji: String, onEmoji: (String) -> Unit) {
+    val p = LocalPalette.current
+    Text("Émoji", fontSize = 14.sp, color = p.texteDoux)
+    Spacer(Modifier.height(6.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = emoji,
+            onValueChange = { onEmoji(dernierGrapheme(it)) },
+            singleLine = true,
+            placeholder = { Text("⌨") },
+            modifier = Modifier.width(64.dp),
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, textAlign = TextAlign.Center),
+        )
+        Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            EMOJIS_SUGGERES.forEach { e ->
+                val choisi = e == emoji
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(12.dp))
+                        .background(if (choisi) p.badgeVertFond else androidx.compose.ui.graphics.Color.Transparent)
+                        .border(1.dp, if (choisi) p.vert else p.contourDoux, RoundedCornerShape(12.dp))
+                        .clickable { onEmoji(if (choisi) "" else e) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(e, fontSize = 20.sp)
+                }
+            }
+        }
+    }
 }
 
 /** Choix de la semaine / du mois avec des flèches. */
@@ -76,10 +123,11 @@ private fun ChoixPeriodeDate(periode: Periode, debut: LocalDate, onDebut: (Local
 fun DialogueAjout(
     periodeInitiale: Periode,
     aujourdhui: LocalDate,
-    onAjouter: (String, Periode, LocalDate) -> Unit,
+    onAjouter: (String, String, Periode, LocalDate) -> Unit,
     onAnnuler: () -> Unit,
 ) {
     var nom by rememberSaveable { mutableStateOf("") }
+    var emoji by rememberSaveable { mutableStateOf("") }
     var periode by rememberSaveable { mutableStateOf(periodeInitiale) }
     var debutTexte by rememberSaveable { mutableStateOf(debutPeriode(periodeInitiale, aujourdhui).toString()) }
     val debut = LocalDate.parse(debutTexte)
@@ -92,6 +140,8 @@ fun DialogueAjout(
         title = { Text("Nouvel objectif") },
         text = {
             Column {
+                ChoixEmoji(emoji) { emoji = it }
+                Spacer(Modifier.height(10.dp))
                 ChampNom(nom) { nom = it }
                 Spacer(Modifier.height(8.dp))
                 ChoixType("Hebdomadaire", Periode.HEBDO, periode == Periode.HEBDO) { choisir(Periode.HEBDO) }
@@ -101,7 +151,7 @@ fun DialogueAjout(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onAjouter(nom, periode, debut) }, enabled = nom.isNotBlank()) { Text("Créer") }
+            TextButton(onClick = { onAjouter(nom, emoji, periode, debut) }, enabled = nom.isNotBlank()) { Text("Créer") }
         },
         dismissButton = { TextButton(onClick = onAnnuler) { Text("Annuler") } },
     )
@@ -124,19 +174,19 @@ private fun ChoixType(libelle: String, periode: Periode, choisi: Boolean, onChoi
 @Composable
 fun DialogueMenu(
     objectif: Objectif,
-    onRenommer: () -> Unit,
+    onModifier: () -> Unit,
     onDupliquer: () -> Unit,
     onSupprimer: () -> Unit,
     onFermer: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onFermer,
-        title = { Text(objectif.nom) },
+        title = { Text(objectif.titre) },
         text = {
             Column {
                 Text(Periodes.libellePeriode(objectif.periode, objectif.debut), color = LocalPalette.current.texteDoux)
                 Spacer(Modifier.height(8.dp))
-                LigneMenu("Renommer", onRenommer)
+                LigneMenu("Modifier (nom, émoji)", onModifier)
                 LigneMenu("Dupliquer", onDupliquer)
                 LigneMenu("Supprimer", onSupprimer, couleur = LocalPalette.current.rouge)
             }
@@ -157,14 +207,21 @@ private fun LigneMenu(texte: String, onClick: () -> Unit, couleur: androidx.comp
 }
 
 @Composable
-fun DialogueRenommer(objectif: Objectif, onRenommer: (String) -> Unit, onAnnuler: () -> Unit) {
+fun DialogueModifier(objectif: Objectif, onModifier: (String, String) -> Unit, onAnnuler: () -> Unit) {
     var nom by rememberSaveable { mutableStateOf(objectif.nom.take(LIMITE_NOM)) }
+    var emoji by rememberSaveable { mutableStateOf(objectif.emoji) }
     AlertDialog(
         onDismissRequest = onAnnuler,
-        title = { Text("Renommer") },
-        text = { ChampNom(nom) { nom = it } },
+        title = { Text("Modifier") },
+        text = {
+            Column {
+                ChoixEmoji(emoji) { emoji = it }
+                Spacer(Modifier.height(10.dp))
+                ChampNom(nom) { nom = it }
+            }
+        },
         confirmButton = {
-            TextButton(onClick = { onRenommer(nom) }, enabled = nom.isNotBlank()) { Text("Enregistrer") }
+            TextButton(onClick = { onModifier(nom, emoji) }, enabled = nom.isNotBlank()) { Text("Enregistrer") }
         },
         dismissButton = { TextButton(onClick = onAnnuler) { Text("Annuler") } },
     )
@@ -180,7 +237,7 @@ fun DialogueDupliquer(objectif: Objectif, aujourdhui: LocalDate, onDupliquer: (L
     val debut = LocalDate.parse(debutTexte)
     AlertDialog(
         onDismissRequest = onAnnuler,
-        title = { Text("Dupliquer « ${objectif.nom} »") },
+        title = { Text("Dupliquer « ${objectif.titre} »") },
         text = {
             Column {
                 Text("Vers :")
@@ -198,7 +255,7 @@ fun DialogueSuppression(objectif: Objectif, onSupprimer: () -> Unit, onAnnuler: 
     AlertDialog(
         onDismissRequest = onAnnuler,
         title = { Text("Supprimer l'objectif ?") },
-        text = { Text("« ${objectif.nom} » (${Periodes.libellePeriode(objectif.periode, objectif.debut)}) et son suivi seront supprimés.") },
+        text = { Text("« ${objectif.titre} » (${Periodes.libellePeriode(objectif.periode, objectif.debut)}) et son suivi seront supprimés.") },
         confirmButton = { TextButton(onClick = onSupprimer) { Text("Supprimer") } },
         dismissButton = { TextButton(onClick = onAnnuler) { Text("Annuler") } },
     )

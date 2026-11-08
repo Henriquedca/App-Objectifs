@@ -46,7 +46,7 @@ fun App() {
 
     var ecran by rememberSaveable { mutableIntStateOf(0) }
     var ajout by rememberSaveable { mutableStateOf<Periode?>(null) }
-    // Dialogues ouverts depuis l'appui long : 0 = menu, 1 = renommer, 2 = dupliquer, 3 = supprimer
+    // Dialogues ouverts depuis l'appui long : 0 = menu, 1 = modifier, 2 = dupliquer, 3 = supprimer
     var cible by remember { mutableStateOf<Objectif?>(null) }
     var action by remember { mutableIntStateOf(0) }
     val ouvrirMenu: (Objectif) -> Unit = { cible = it; action = 0 }
@@ -115,8 +115,8 @@ fun App() {
         DialogueAjout(
             periodeInitiale = periodeInitiale,
             aujourdhui = aujourdhui,
-            onAjouter = { nom, periode, date ->
-                stockage.ajouter(nom, periode, date)
+            onAjouter = { nom, emoji, periode, date ->
+                stockage.ajouter(nom, emoji, periode, date)
                 ajout = null
                 modifie()
             },
@@ -128,15 +128,15 @@ fun App() {
         when (action) {
             0 -> DialogueMenu(
                 objectif = objectif,
-                onRenommer = { action = 1 },
+                onModifier = { action = 1 },
                 onDupliquer = { action = 2 },
                 onSupprimer = { action = 3 },
                 onFermer = fermer,
             )
-            1 -> DialogueRenommer(
+            1 -> DialogueModifier(
                 objectif = objectif,
-                onRenommer = { nom ->
-                    stockage.renommer(objectif.id, nom)
+                onModifier = { nom, emoji ->
+                    stockage.modifier(objectif.id, nom, emoji)
                     fermer()
                     modifie()
                 },

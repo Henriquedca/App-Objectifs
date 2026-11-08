@@ -88,7 +88,7 @@ fun EcranObjectifs(
             if (liste.isNotEmpty()) {
                 item {
                     Text(
-                        "Appui long sur un objectif : renommer, dupliquer, supprimer",
+                        "Appui long sur un objectif : modifier, dupliquer, supprimer",
                         color = p.texteDoux,
                         fontSize = 13.sp,
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -156,7 +156,7 @@ private fun CarteHebdo(
 ) {
     val p = LocalPalette.current
     Carte(onAppuiLong = { onMenu(objectif) }) {
-        Text(objectif.nom, color = p.texte, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(objectif.titre, color = p.texte, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         RondsSemaine(objectif, aujourdhui, donnees, onCycler, 38.dp)
     }
@@ -187,7 +187,7 @@ fun CarteMensuel(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                 )
-                Text(objectif.nom, color = p.texte, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(objectif.titre, color = p.texte, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(

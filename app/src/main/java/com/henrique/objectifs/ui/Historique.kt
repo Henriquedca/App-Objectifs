@@ -142,7 +142,7 @@ private fun CarteSemaine(
                     .padding(top = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(o.nom, color = p.texte, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(o.titre, color = p.texte, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     val reussis = donnees.reussis(o)
                     val (fond, couleur) = when {
                         !terminee -> p.caseVide to p.texteDoux
