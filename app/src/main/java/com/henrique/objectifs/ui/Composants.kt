@@ -86,6 +86,33 @@ fun Pastille(periode: Periode, etat: Etat, moment: Moment, taille: Dp, onClick: 
     }
 }
 
+/** Rond avec la lettre du jour dedans (style du widget). */
+@Composable
+fun RondLettre(lettre: String, etat: Etat, moment: Moment, taille: Dp, onClick: (() -> Unit)? = null) {
+    val p = LocalPalette.current
+    var m = Modifier.size(taille).clip(CircleShape)
+    if (onClick != null) m = m.clickable(onClick = onClick)
+    m = when (etat) {
+        Etat.REUSSI -> m.background(p.vert)
+        Etat.RATE -> m.background(p.rouge)
+        Etat.VIDE -> when (moment) {
+            Moment.AUJOURDHUI -> m.border(2.5.dp, p.contour, CircleShape)
+            Moment.PASSE -> m.border(1.5.dp, p.contourDoux, CircleShape)
+            Moment.FUTUR -> m.pointilles(p.contourDoux, rond = true)
+        }
+    }
+    val couleur = when {
+        etat == Etat.REUSSI -> p.surVert
+        etat == Etat.RATE -> p.surRouge
+        moment == Moment.AUJOURDHUI -> p.contour
+        moment == Moment.FUTUR -> p.texteDoux
+        else -> p.texte
+    }
+    Box(m, contentAlignment = Alignment.Center) {
+        Text(lettre, color = couleur, fontSize = (taille.value * 0.42f).sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
 private fun Modifier.pointilles(couleur: Color, rond: Boolean): Modifier = drawBehind {
     val w = 1.5.dp.toPx()
     val effet = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))

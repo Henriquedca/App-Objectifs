@@ -35,11 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.henrique.objectifs.data.Donnees
 import com.henrique.objectifs.data.Objectif
 import com.henrique.objectifs.data.Periodes
+import com.henrique.objectifs.data.Moment
+import com.henrique.objectifs.data.moment
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -135,33 +138,48 @@ private fun CarteSemaine(
             fontWeight = FontWeight.SemiBold,
         )
         hebdo.forEachIndexed { i, o ->
-            if (i > 0) HorizontalDivider(color = p.separateur, modifier = Modifier.padding(top = 12.dp))
-            Column(
+            if (i > 0) HorizontalDivider(color = p.separateur)
+            val reussis = donnees.reussis(o)
+            val couleurScore = when {
+                !terminee -> p.texteDoux
+                reussis == 7 -> p.badgeVertTexte
+                else -> p.badgeOrangeTexte
+            }
+            Row(
                 Modifier.fillMaxWidth()
                     .combinedClickable(onClick = {}, onLongClick = { onMenu(o) })
-                    .padding(top = 12.dp)
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(o.titre, color = p.texte, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    val reussis = donnees.reussis(o)
-                    val (fond, couleur) = when {
-                        !terminee -> p.caseVide to p.texteDoux
-                        reussis == 7 -> p.badgeVertFond to p.badgeVertTexte
-                        else -> p.badgeOrangeFond to p.badgeOrangeTexte
-                    }
-                    Badge("$reussis / 7", fond, couleur)
-                    Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
                     Text(
-                        "${donnees.pourcentage(o)} %",
-                        color = couleur,
-                        fontSize = 15.sp,
+                        o.titre,
+                        color = p.texte,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.width(48.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "$reussis / 7 · ${donnees.pourcentage(o)} %",
+                        color = couleurScore,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
-                Spacer(Modifier.height(10.dp))
-                RondsSemaine(o, aujourdhui, donnees, onCycler, 30.dp)
+                Spacer(Modifier.width(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Periodes.joursSemaine(o.debut).forEachIndexed { j, jour ->
+                        val m = moment(jour, aujourdhui)
+                        RondLettre(
+                            lettre = Periodes.LETTRES_JOURS[j],
+                            etat = donnees.etat(o, jour),
+                            moment = m,
+                            taille = 27.dp,
+                            onClick = if (m == Moment.FUTUR) null else ({ onCycler(o, jour) }),
+                        )
+                    }
+                }
             }
         }
     }
