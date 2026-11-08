@@ -132,7 +132,7 @@ private fun Contenu(stockage: Stockage, aujourdhui: LocalDate, largeur: Dp, @Sup
             Text(
                 text = "Aucun objectif",
                 style = TextStyle(color = GRIS, fontSize = 14.sp),
-                modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>()),
+                modifier = GlanceModifier.clickable(actionStartActivity<MainActivity>(), rippleOverride = R.drawable.w_clic),
             )
         }
         Column(modifier = GlanceModifier.fillMaxWidth()) {
@@ -170,7 +170,7 @@ private fun BlocHebdo(
         Text(
             text = objectif.nom,
             maxLines = 1,
-            modifier = GlanceModifier.padding(bottom = 4.dp).clickable(actionStartActivity<MainActivity>()),
+            modifier = GlanceModifier.padding(bottom = 4.dp).clickable(actionStartActivity<MainActivity>(), rippleOverride = R.drawable.w_clic),
             style = TextStyle(color = BLANC, fontSize = 15.sp, fontWeight = FontWeight.Bold),
         )
         if (afficherLettres) {
@@ -188,7 +188,7 @@ private fun BlocHebdo(
             jours.forEach { jour ->
                 val m = moment(jour, aujourdhui)
                 var modif = GlanceModifier.width(cellule).height(taillePastille + 6.dp)
-                if (m != Moment.FUTUR) modif = modif.clickable(actionCycler(objectif, jour))
+                if (m != Moment.FUTUR) modif = modif.clickable(actionCycler(objectif, jour), rippleOverride = R.drawable.w_clic)
                 Box(modifier = modif, contentAlignment = Alignment.Center) {
                     Image(
                         provider = ImageProvider(dessinRond(stockage.etat(objectif.id, jour), m)),
@@ -217,7 +217,7 @@ private fun BlocMensuel(
         modifier = GlanceModifier.fillMaxWidth().padding(top = if (espaceAvant) 8.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = GlanceModifier.defaultWeight().clickable(actionStartActivity<MainActivity>())) {
+        Column(modifier = GlanceModifier.defaultWeight().clickable(actionStartActivity<MainActivity>(), rippleOverride = R.drawable.w_clic)) {
             Text(
                 text = "OBJECTIF DE ${Periodes.nomMoisSeul(mois).uppercase()}",
                 maxLines = 1,
@@ -247,7 +247,7 @@ private fun BlocMensuel(
         // Carré = aujourd'hui, aligné sous le « D »
         Box(
             modifier = GlanceModifier.width(cellule).height(taillePastille + 6.dp)
-                .clickable(actionCycler(objectif, aujourdhui)),
+                .clickable(actionCycler(objectif, aujourdhui), rippleOverride = R.drawable.w_clic),
             contentAlignment = Alignment.Center,
         ) {
             Image(
